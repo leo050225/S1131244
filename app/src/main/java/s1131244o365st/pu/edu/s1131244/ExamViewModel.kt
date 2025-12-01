@@ -13,5 +13,5 @@ class ExamViewModel : ViewModel() {
     }
 
     // 成績
-    val score = "成績：0分"
+    var score = "成績：0分"
 }

@@ -17,7 +17,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
-import kotlin.random.Random
 
 @Composable
 fun ExamScreen(viewModel: ExamViewModel) {
@@ -34,10 +33,21 @@ fun ExamScreen(viewModel: ExamViewModel) {
         R.drawable.service3
     )
 
+    // 對應每個服務圖示的正確角色索引 (0~3) 及答案文字
+    val serviceAnswers = mapOf(
+        R.drawable.service0 to Pair(0, "極早期療育，屬於嬰幼兒方面的服務"),
+        R.drawable.service1 to Pair(1, "離島服務，屬於兒童方面的服務"),
+        R.drawable.service2 to Pair(2, "極重多障，屬於成人方面的服務"),
+        R.drawable.service3 to Pair(3, "輔具服務，屬於一般民眾方面的服務")
+    )
+
     var serviceImg by remember { mutableStateOf(serviceImages.random()) }
     var posY by remember { mutableStateOf(0f) }
     var posX by remember { mutableStateOf((screenWidthPx / 2).toFloat()) }
     var collisionText by remember { mutableStateOf("") }
+    var answerText by remember { mutableStateOf("") }
+    var showAnswer by remember { mutableStateOf(false) }
+    var collidedRoleName by remember { mutableStateOf("") } // 碰撞到的角色名稱
 
     val roleSizePx = 300.dp.value * config.densityDpi / 160
     val serviceSizePx = 150.dp.value * config.densityDpi / 160
@@ -63,17 +73,39 @@ fun ExamScreen(viewModel: ExamViewModel) {
                     posY + serviceSizePx > roleY &&
                     posY < roleY + roleSizePx
                 ) {
-                    collisionText = when (index) {
-                        0 -> "碰撞嬰幼兒"
-                        1 -> "碰撞兒童"
-                        2 -> "碰撞成人"
-                        3 -> "碰撞一般民眾"
+                    collided = true
+
+                    // 記錄碰撞角色名稱
+                    collidedRoleName = when (index) {
+                        0 -> "嬰幼兒"
+                        1 -> "兒童"
+                        2 -> "成人"
+                        3 -> "一般民眾"
                         else -> ""
                     }
+
+                    val (correctRoleIndex, answer) = serviceAnswers[serviceImg] ?: Pair(-1, "")
+                    val currentScore = viewModel.score.toIntOrNull() ?: 0
+                    if (index == correctRoleIndex) {
+                        viewModel.score = (currentScore + 1).toString()
+                        collisionText = "正確！"
+                    } else {
+                        viewModel.score = maxOf(currentScore - 1, 0).toString()
+                        collisionText = "錯誤！"
+                    }
+
+                    answerText = answer
+                    showAnswer = true
+
+                    // 暫停 3 秒再出下一題
+                    delay(3000)
+                    showAnswer = false
                     posY = 0f
                     posX = (screenWidthPx / 2).toFloat()
                     serviceImg = serviceImages.random()
-                    collided = true
+                    collisionText = ""
+                    answerText = ""
+                    collidedRoleName = ""
                     break
                 }
             }
@@ -101,17 +133,17 @@ fun ExamScreen(viewModel: ExamViewModel) {
             }
     ) {
 
+        // 服務圖示
         Image(
             painter = painterResource(id = serviceImg),
             contentDescription = null,
             modifier = Modifier
                 .size(150.dp)
-                .offset {
-                    Offset(posX, posY).toIntOffset()
-                },
+                .offset { Offset(posX, posY).toIntOffset() },
             contentScale = ContentScale.Fit
         )
 
+        // 角色圖示
         Image(
             painter = painterResource(id = R.drawable.role0),
             contentDescription = null,
@@ -147,32 +179,52 @@ fun ExamScreen(viewModel: ExamViewModel) {
             contentScale = ContentScale.Fit
         )
 
+        // 中央資訊欄
         Column(
             modifier = Modifier.align(Alignment.Center),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-
             Image(
                 painter = painterResource(id = R.drawable.happy),
                 contentDescription = null,
                 contentScale = ContentScale.Crop
             )
-
             Spacer(modifier = Modifier.height(10.dp))
-
             Text(text = "瑪利亞基金會服務大考驗", fontSize = 22.sp)
             Spacer(modifier = Modifier.height(10.dp))
-
             Text(text = "作者：${viewModel.author}", fontSize = 22.sp)
             Spacer(modifier = Modifier.height(10.dp))
-
             Text(
                 text = viewModel.getScreenInfo(screenWidthPx, screenHeightPx),
                 fontSize = 22.sp
             )
             Spacer(modifier = Modifier.height(10.dp))
 
-            Text(text = viewModel.score + " " + collisionText, fontSize = 22.sp)
+            // 分數顯示：碰撞到角色名稱
+            val scoreDisplayText = if (collidedRoleName.isNotEmpty()) {
+                "成績: ${viewModel.score}分（$collidedRoleName）"
+            } else {
+                "成績: ${viewModel.score}分"
+            }
+            Text(text = scoreDisplayText, fontSize = 22.sp)
+        }
+
+        // 下方答案提示欄
+        if (showAnswer) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(60.dp)
+                    .align(Alignment.BottomCenter)
+                    .background(Color.White.copy(alpha = 0.9f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = answerText,
+                    fontSize = 20.sp,
+                    color = if (collisionText == "正確！") Color.Green else Color.Red
+                )
+            }
         }
     }
 }
