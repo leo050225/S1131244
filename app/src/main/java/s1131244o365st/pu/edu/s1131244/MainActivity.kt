@@ -37,12 +37,13 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             S1131244之專案Theme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Android",
-                        modifier = Modifier.padding(innerPadding)
-                    )
+                setContent {
+                    S1131244之專案Theme {
+                        val vm = ExamViewModel()
+                        ExamScreen(viewModel = vm)
+                    }
                 }
+
             }
         }
     }
